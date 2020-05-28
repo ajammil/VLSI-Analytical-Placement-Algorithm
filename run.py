@@ -5,7 +5,7 @@ import matplotlib.patches as patches
 from scipy.ndimage.interpolation import rotate
 
 
-class pin:
+class Pin:
     def __init__(self, name, x, y,gates):
         self.name = name
         self.x = x
@@ -32,7 +32,7 @@ def show_graph_with_labels(adjacency_matrix, mylabels, myposition,gr):
 
 initialRectangleCoordinate = (0,0)
 initialRectangleHeight = 1
-initialRectangleHeight = 1
+initialRectangleWidth = 1
 labels ={0:'0', 1:'1', 2:'2', 3:'3'}
 
 # initial unoptimized positions
@@ -44,14 +44,14 @@ pos = {}
 for i in range(0, position.shape[0]):
     pos[i] = position[i]
 
-matrix = np.array([ [ 0,  5,  0,  1,],
-                    [ 5,  0,  1,  0,],
-                    [ 0,  1,  0,  1,],
-                    [ 1,  0,  1,  0,]])
+matrix = np.array([ [ 0.0,  5.0,  0.0,  1.0,],
+                    [ 5.0,  0.0,  1.0,  0.0,],
+                    [ 0.0,  1.0,  0.0,  1.0,],
+                    [ 1.0,  0.0,  1.0,  0.0,]])
 aMatrix = np.copy(-matrix)
-pin1 = pin(4,0,0.5,{0:5, 1:10})
-pin2 = pin(5,1,1,{1:2, 3:1})
-pin3 = pin(6,1,0,{3:1, 0:10})
+pin1 = Pin(4,0.0,0.5,{0:5, 1:10})
+pin2 = Pin(5,1.0,1.0,{1:2, 3:1})
+pin3 = Pin(6,1.0,0.0,{3:1, 0:10})
 pins = []
 pins.append(pin1)
 pins.append(pin2)
@@ -82,5 +82,53 @@ posY = np.linalg.solve(aMatrix,by)
 position = np.concatenate((posX,posY),axis=1)
 for i in range(0, position.shape[0]):
     pos[i] = position[i]
+
+show_graph_with_labels(matrix,labels,pos,gr)
+
+
+newPins = []
+for i in range (position.shape[0]):
+    name = i
+    x = position[i,0]
+    y = position[i,1]
+    gates = {}
+    for pin in pins:
+        for gate in pin.gates.keys():
+            if(name == gate):
+                gates[pin.name] = pin.gates[name]
+    newPins.append(Pin(name,x,y,gates))
+for pin in newPins:
+    print(pin.name,pin.x,pin.y,pin.gates)
+
+newPosition = np.zeros((len(pins),2))
+
+for i,pin in enumerate(pins):
+    newPosition[i,0] = pin.x
+    newPosition[i,1] = pin.y
+
+
+
+bx = np.zeros((newPosition.shape[0],1))
+by = np.zeros((newPosition.shape[0],1))
+newAMatrix = np.zeros((newPosition.shape[0],newPosition.shape[0]))
+for pin in newPins:
+    # labels[pin.name] = str(pin.name)
+    # pos[pin.name] = np.array([ pin.x, pin.y ])
+    for gate in pin.gates.keys():
+        gateNumber = gate-len(newPins)
+        bx[gateNumber,0] = bx[gateNumber,0] + pin.x * pin.gates[gate]
+        by[gateNumber,0] = by[gateNumber,0] + pin.y * pin.gates[gate]
+        newAMatrix[gateNumber,gateNumber] = newAMatrix[gateNumber,gateNumber] + pin.gates[gate]
+
+posX = np.linalg.solve(newAMatrix,bx)
+posY = np.linalg.solve(newAMatrix,by)
+newPosition = np.concatenate((posX,posY),axis=1)
+print(newPosition)
+for i in range(0, newPosition.shape[0]):
+    if(pos[i+len(newPins)][0] == initialRectangleWidth or pos[i+len(newPins)][0] == 0):
+        pos[i+len(newPins)][1] = newPosition[i][1]
+    else:
+        pos[i+len(newPins)][0] = newPosition[i][0]
+
 
 show_graph_with_labels(matrix,labels,pos,gr)
